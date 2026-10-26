@@ -1,0 +1,250 @@
+import React, { useState } from 'react';
+import { socket } from '../socket';
+import { RoomState, TeamId, ActionType, SiamStrategy, SiamNegotiateResponse } from '../../shared/types';
+import { Shield, Crown, Anchor, CheckCircle } from 'lucide-react';
+
+export default function TeamView({ team, state }: { team: TeamId; state: RoomState }) {
+  const [action, setAction] = useState<ActionType>('NEGOTIATE');
+  const [demand, setDemand] = useState<number>(20);
+  const [strategy, setStrategy] = useState<SiamStrategy>('DEFEND');
+  const [counterPercent, setCounterPercent] = useState<number>(20);
+
+  const teamColors = {
+    BRITAIN: 'border-[#315C9B] text-[#315C9B] bg-blue-50',
+    FRANCE: 'border-[#9B3D4D] text-[#9B3D4D] bg-red-50',
+    SIAM: 'border-[#27856A] text-[#27856A] bg-emerald-50',
+  };
+
+  const currentMove = state.moves[team];
+  const activeQuestion = state.activeQuestions[team];
+
+  const submitMove = () => {
+    if (team === 'SIAM') {
+      socket.emit('SUBMIT_MOVE', { strategy });
+    } else {
+      socket.emit('SUBMIT_MOVE', { action, negotiateDemand: demand });
+    }
+  };
+
+  const submitAnswer = (key: string) => {
+    socket.emit('SUBMIT_ANSWER', { team, answerKey: key });
+  };
+
+  const submitSiamOfferResponse = (target: 'BRITAIN' | 'FRANCE', respAction: SiamNegotiateResponse) => {
+    socket.emit('SUBMIT_SIAM_DECISION', { target, action: respAction, counterPercent });
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Thẻ Điểm Đội */}
+      <div className={`p-6 rounded-2xl border-2 ${teamColors[team]} bg-white shadow-sm flex items-center justify-between`}>
+        <div className="flex items-center gap-3">
+          {team === 'BRITAIN' && <Crown size={32} className="text-[#315C9B]" />}
+          {team === 'FRANCE' && <Anchor size={32} className="text-[#9B3D4D]" />}
+          {team === 'SIAM' && <Shield size={32} className="text-[#27856A]" />}
+          <div>
+            <h2 className="text-xl font-black">
+              {team === 'BRITAIN' && 'ĐỘI HOÀNG GIA ANH'}
+              {team === 'FRANCE' && 'ĐỘI CỘNG HÒA PHÁP'}
+              {team === 'SIAM' && 'ĐỘI VƯƠNG QUỐC XIÊM'}
+            </h2>
+            <p className="text-xs text-slate-500">Mã phòng: {state.roomCode} | Lượt {state.round}/3</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-3xl font-black">{state.scores[team]}</div>
+          <div className="text-xs font-bold text-slate-400">ĐIỂM CHIẾN LƯỢC</div>
+        </div>
+      </div>
+
+      {/* Giai đoạn Chọn Nước Đi */}
+      {state.phase === 'CHOOSING_MOVES' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div className="flex justify-between items-center border-b pb-3">
+            <h3 className="font-bold text-slate-800">LỰA CHỌN NƯỚC ĐI BÍ MẬT</h3>
+            <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-semibold">
+              Bảo mật tuyệt đối
+            </span>
+          </div>
+
+          {currentMove?.submitted ? (
+            <div className="p-5 text-center text-emerald-700 bg-emerald-50 rounded-xl font-bold flex flex-col items-center gap-2">
+              <CheckCircle size={32} />
+              Đã khóa lựa chọn! Đang chờ Quản trò công bố.
+            </div>
+          ) : (
+            <>
+              {team !== 'SIAM' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setAction('NEGOTIATE')}
+                      className={`p-3 rounded-xl border-2 font-bold text-sm ${action === 'NEGOTIATE' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200'}`}
+                    >
+                      Đàm Phán
+                    </button>
+                    <button
+                      onClick={() => setAction('ATTACK')}
+                      className={`p-3 rounded-xl border-2 font-bold text-sm ${action === 'ATTACK' ? 'border-red-600 bg-red-50 text-red-700' : 'border-slate-200'}`}
+                    >
+                      Tấn Công
+                    </button>
+                  </div>
+
+                  {action === 'NEGOTIATE' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Mức yêu cầu nhượng bộ (%):</label>
+                      <div className="grid grid-cols-5 gap-2">
+                        {[10, 20, 30, 40, 50].map(pct => (
+                          <button
+                            key={pct}
+                            onClick={() => setDemand(pct)}
+                            className={`py-2 rounded-lg font-bold text-xs ${demand === pct ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={submitMove}
+                    className="w-full py-3 bg-slate-900 text-white font-bold rounded-xl text-sm hover:bg-slate-800 transition"
+                  >
+                    Xác Nhận & Khóa Lựa Chọn
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Chiến lược dự kiến của Xiêm:</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setStrategy('CONCEDE')}
+                      className={`p-3 rounded-xl border-2 text-xs font-bold ${strategy === 'CONCEDE' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200'}`}
+                    >
+                      Sẵn sàng nhượng bộ
+                    </button>
+                    <button
+                      onClick={() => setStrategy('REJECT')}
+                      className={`p-3 rounded-xl border-2 text-xs font-bold ${strategy === 'REJECT' ? 'border-amber-600 bg-amber-50 text-amber-700' : 'border-slate-200'}`}
+                    >
+                      Từ chối đàm phán
+                    </button>
+                    <button
+                      onClick={() => setStrategy('DEFEND')}
+                      className={`p-3 rounded-xl border-2 text-xs font-bold ${strategy === 'DEFEND' ? 'border-red-600 bg-red-50 text-red-700' : 'border-slate-200'}`}
+                    >
+                      Phòng thủ chủ động
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={submitMove}
+                    className="w-full py-3 bg-[#27856A] text-white font-bold rounded-xl text-sm hover:bg-emerald-700 transition"
+                  >
+                    Khóa Kế Hoạch Chiến Lược
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Trả Lời Câu Hỏi Kiến Thức */}
+      {activeQuestion && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+          <div className="flex justify-between items-center border-b pb-3">
+            <span className="text-xs font-black uppercase text-purple-700">CÂU HỎI HÀNH ĐỘNG</span>
+            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-bold">
+              Độ khó: {activeQuestion.question.difficulty}
+            </span>
+          </div>
+
+          <h3 className="font-bold text-slate-800 text-base">{activeQuestion.question.question}</h3>
+
+          <div className="space-y-2">
+            {activeQuestion.question.options.map(opt => (
+              <button
+                key={opt.key}
+                disabled={!!activeQuestion.answered}
+                onClick={() => submitAnswer(opt.key)}
+                className={`w-full text-left p-3.5 rounded-xl border text-sm font-semibold transition ${
+                  activeQuestion.answered === opt.key
+                    ? 'border-purple-600 bg-purple-50 text-purple-800'
+                    : 'border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className="font-bold mr-2">{opt.key}.</span> {opt.text}
+              </button>
+            ))}
+          </div>
+
+          {activeQuestion.answered && (
+            <p className="text-xs text-center text-slate-500 font-semibold pt-2">
+              Đã nộp đáp án. Đang chờ Quản trò phê duyệt kết quả.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Xiêm Phản Hồi Đề Nghị Đàm Phán Cụ Thể */}
+      {team === 'SIAM' && state.phase === 'SIAM_RESPONSE' && (
+        <div className="space-y-4">
+          {state.moves.BRITAIN?.action === 'NEGOTIATE' && (
+            <div className="bg-white p-5 rounded-2xl border-l-4 border-blue-600 shadow-sm space-y-3">
+              <h4 className="font-bold text-sm">Anh yêu cầu nhượng bộ {state.moves.BRITAIN.negotiateDemand}%</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => submitSiamOfferResponse('BRITAIN', 'ACCEPT')}
+                  className="p-2 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold"
+                >
+                  Chấp nhận
+                </button>
+                <button
+                  onClick={() => submitSiamOfferResponse('BRITAIN', 'COUNTER')}
+                  className="p-2 bg-blue-100 text-blue-800 rounded-lg text-xs font-bold"
+                >
+                  Phản hồi mức khác
+                </button>
+                <button
+                  onClick={() => submitSiamOfferResponse('BRITAIN', 'REJECT')}
+                  className="p-2 bg-red-100 text-red-800 rounded-lg text-xs font-bold"
+                >
+                  Từ chối
+                </button>
+              </div>
+            </div>
+          )}
+
+          {state.moves.FRANCE?.action === 'NEGOTIATE' && (
+            <div className="bg-white p-5 rounded-2xl border-l-4 border-red-600 shadow-sm space-y-3">
+              <h4 className="font-bold text-sm">Pháp yêu cầu nhượng bộ {state.moves.FRANCE.negotiateDemand}%</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => submitSiamOfferResponse('FRANCE', 'ACCEPT')}
+                  className="p-2 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold"
+                >
+                  Chấp nhận
+                </button>
+                <button
+                  onClick={() => submitSiamOfferResponse('FRANCE', 'COUNTER')}
+                  className="p-2 bg-blue-100 text-blue-800 rounded-lg text-xs font-bold"
+                >
+                  Phản hồi mức khác
+                </button>
+                <button
+                  onClick={() => submitSiamOfferResponse('FRANCE', 'REJECT')}
+                  className="p-2 bg-red-100 text-red-800 rounded-lg text-xs font-bold"
+                >
+                  Từ chối
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

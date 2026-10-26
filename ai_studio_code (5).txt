@@ -1,0 +1,39 @@
+import React from 'react';
+import { X } from 'lucide-react';
+
+export default function RuleModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl relative space-y-4 text-sm text-slate-700">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+        >
+          <X size={20} />
+        </button>
+
+        <h2 className="text-xl font-black text-slate-900 border-b pb-2">LUẬT CHƠI CHIẾN THUẬT</h2>
+
+        <div>
+          <h3 className="font-bold text-[#315C9B]">1. Điểm Khởi Đầu & Người Thắng</h3>
+          <p>• Anh: 100 điểm | Pháp: 100 điểm | Xiêm: 200 điểm.</p>
+          <p>• <strong>Người thắng:</strong> Đội có tỉ lệ tăng trưởng cao nhất: <code>% Thay đổi = (Điểm Cuối - Điểm Đầu) / Điểm Đầu × 100%</code>.</p>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-[#9B3D4D]">2. Quy Tắc Đàm Phán</h3>
+          <p>• Anh/Pháp yêu cầu 10% đến 50%.</p>
+          <p>• Xiêm chấp nhận: chuyển đúng số điểm.</p>
+          <p>• Xiêm phản hồi mức khác: chuyển <strong>trung bình cộng</strong> 2 mức.</p>
+          <p>• Xiêm từ chối: 0 điểm.</p>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-[#27856A]">3. Quy Tắc Tấn Công</h3>
+          <p>• <strong>Tấn công đơn lẻ:</strong> Xiêm thủ thành công ➔ Nước tấn công -30, Xiêm 0. Xiêm thủ thất bại ➔ Nước tấn công +40, Xiêm -30.</p>
+          <p>• <strong>Cả Anh & Pháp cùng tấn công:</strong> Xiêm trả lời câu hỏi phòng thủ (Đúng: -10, Sai: -20). Sau đó Anh và Pháp đối đầu (Thắng: +30, Thua: -15).</p>
+        </div>
+      </div>
+    </div>
+  );
+}

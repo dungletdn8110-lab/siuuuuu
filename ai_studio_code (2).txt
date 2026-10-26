@@ -1,0 +1,267 @@
+import React, { useState } from 'react';
+import { socket } from '../socket';
+import { RoomState, TeamId } from '../../shared/types';
+import { Play, Eye, HelpCircle, Check, X, RotateCcw, Award } from 'lucide-react';
+
+export default function ModeratorView({ state }: { state: RoomState }) {
+  const [selectedDuelWinner, setSelectedDuelWinner] = useState<TeamId | null>(null);
+
+  const startRound = () => socket.emit('START_GAME');
+  const revealMoves = () => socket.emit('REVEAL_MOVES');
+  const startActionQuestions = () => socket.emit('START_ACTION_QUESTIONS');
+  const proceedToSiamOrDuel = () => socket.emit('PROCEED_TO_SIAM_OR_DUEL');
+  const previewScore = () => socket.emit('PREVIEW_SCORE_CHANGES');
+  const confirmScore = () => socket.emit('CONFIRM_SCORE_CHANGES');
+  const nextRound = () => socket.emit('NEXT_ROUND');
+  const undoLast = () => socket.emit('UNDO_LAST_ACTION');
+  const resetGame = () => {
+    if (confirm('Bạn có chắc chắn muốn thiết lập lại toàn bộ ván chơi?')) {
+      socket.emit('RESET_GAME');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Control Bar */}
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-slate-800">BÀN ĐIỀU KHIỂN QUẢN TRÒ</h2>
+          <p className="text-xs text-slate-500">Trạng thái: <strong className="text-amber-600">{state.phase}</strong></p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {state.phase === 'LOBBY' && (
+            <button onClick={startRound} className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold">
+              <Play size={16} /> Bắt đầu ván
+            </button>
+          )}
+
+          {state.phase === 'CHOOSING_MOVES' && (
+            <button onClick={revealMoves} className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold shadow">
+              <Eye size={16} /> 1. Khóa & Công Bố Nước Đi
+            </button>
+          )}
+
+          {state.phase === 'MOVES_REVEALED' && (
+            <button onClick={startActionQuestions} className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold shadow">
+              <HelpCircle size={16} /> 2. Mở Câu Hỏi Hành Động
+            </button>
+          )}
+
+          {state.phase === 'ACTION_QUESTIONS' && (
+            <button onClick={proceedToSiamOrDuel} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold shadow">
+              3. Chuyển Phản Hồi Xiêm / Đối Đầu
+            </button>
+          )}
+
+          {(state.phase === 'SIAM_RESPONSE' || state.phase === 'DUEL_PHASE') && (
+            <button onClick={previewScore} className="bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold shadow">
+              4. Xem Trước Bảng Điểm
+            </button>
+          )}
+
+          {state.phase === 'ROUND_SUMMARY' && (
+            <button onClick={nextRound} className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold shadow">
+              {state.round >= 3 ? 'Xem Tổng Kết Chung Cuộc' : `Bắt Đầu Lượt ${state.round + 1}`}
+            </button>
+          )}
+
+          <button onClick={undoLast} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
+            <RotateCcw size={14} /> Hoàn tác
+          </button>
+
+          <button onClick={resetGame} className="bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded-xl text-xs font-semibold">
+            Làm mới ván
+          </button>
+        </div>
+      </div>
+
+      {/* Tình Trạng Lựa Chọn Của Các Đội */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ANH */}
+        <div className="bg-white p-5 rounded-2xl border-t-4 border-[#315C9B] shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-[#315C9B]">ĐỘI ANH</h3>
+            <span className="text-xl font-black">{state.scores.BRITAIN} đ</span>
+          </div>
+          <p className="text-xs text-slate-500 mb-2">Trạng thái: {state.moves.BRITAIN?.submitted ? '✅ Đã nộp' : '⏳ Chưa nộp'}</p>
+          {state.movesRevealed && state.moves.BRITAIN && (
+            <div className="bg-blue-50 p-3 rounded-lg text-xs space-y-1">
+              <p><strong>Nước đi:</strong> {state.moves.BRITAIN.action === 'NEGOTIATE' ? `Đàm phán (${state.moves.BRITAIN.negotiateDemand}%)` : 'Tấn công'}</p>
+            </div>
+          )}
+          {state.activeQuestions.BRITAIN && (
+            <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs border">
+              <p className="font-semibold text-slate-700 mb-1">Câu hỏi A: {state.activeQuestions.BRITAIN.question.question}</p>
+              <p className="text-emerald-700 font-bold">Đáp án đúng: {state.activeQuestions.BRITAIN.question.correctAnswer}</p>
+              <p>Đội chọn: <strong>{state.activeQuestions.BRITAIN.answered || 'Chưa trả lời'}</strong></p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => socket.emit('SET_ANSWER_STATUS', { team: 'BRITAIN', isCorrect: true })}
+                  className={`px-2 py-1 rounded text-xs font-bold ${state.activeQuestions.BRITAIN.correct === true ? 'bg-emerald-600 text-white' : 'bg-slate-200'}`}
+                >
+                  Đúng
+                </button>
+                <button
+                  onClick={() => socket.emit('SET_ANSWER_STATUS', { team: 'BRITAIN', isCorrect: false })}
+                  className={`px-2 py-1 rounded text-xs font-bold ${state.activeQuestions.BRITAIN.correct === false ? 'bg-red-600 text-white' : 'bg-slate-200'}`}
+                >
+                  Sai
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* PHÁP */}
+        <div className="bg-white p-5 rounded-2xl border-t-4 border-[#9B3D4D] shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-[#9B3D4D]">ĐỘI PHÁP</h3>
+            <span className="text-xl font-black">{state.scores.FRANCE} đ</span>
+          </div>
+          <p className="text-xs text-slate-500 mb-2">Trạng thái: {state.moves.FRANCE?.submitted ? '✅ Đã nộp' : '⏳ Chưa nộp'}</p>
+          {state.movesRevealed && state.moves.FRANCE && (
+            <div className="bg-red-50 p-3 rounded-lg text-xs space-y-1">
+              <p><strong>Nước đi:</strong> {state.moves.FRANCE.action === 'NEGOTIATE' ? `Đàm phán (${state.moves.FRANCE.negotiateDemand}%)` : 'Tấn công'}</p>
+            </div>
+          )}
+          {state.activeQuestions.FRANCE && (
+            <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs border">
+              <p className="font-semibold text-slate-700 mb-1">Câu hỏi A: {state.activeQuestions.FRANCE.question.question}</p>
+              <p className="text-emerald-700 font-bold">Đáp án đúng: {state.activeQuestions.FRANCE.question.correctAnswer}</p>
+              <p>Đội chọn: <strong>{state.activeQuestions.FRANCE.answered || 'Chưa trả lời'}</strong></p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => socket.emit('SET_ANSWER_STATUS', { team: 'FRANCE', isCorrect: true })}
+                  className={`px-2 py-1 rounded text-xs font-bold ${state.activeQuestions.FRANCE.correct === true ? 'bg-emerald-600 text-white' : 'bg-slate-200'}`}
+                >
+                  Đúng
+                </button>
+                <button
+                  onClick={() => socket.emit('SET_ANSWER_STATUS', { team: 'FRANCE', isCorrect: false })}
+                  className={`px-2 py-1 rounded text-xs font-bold ${state.activeQuestions.FRANCE.correct === false ? 'bg-red-600 text-white' : 'bg-slate-200'}`}
+                >
+                  Sai
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* XIÊM */}
+        <div className="bg-white p-5 rounded-2xl border-t-4 border-[#27856A] shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-bold text-[#27856A]">ĐỘI XIÊM</h3>
+            <span className="text-xl font-black">{state.scores.SIAM} đ</span>
+          </div>
+          <p className="text-xs text-slate-500 mb-2">Trạng thái: {state.moves.SIAM?.submitted ? '✅ Đã nộp' : '⏳ Chưa nộp'}</p>
+          {state.movesRevealed && state.moves.SIAM && (
+            <div className="bg-emerald-50 p-3 rounded-lg text-xs space-y-1">
+              <p><strong>Chiến lược ban đầu:</strong> {state.moves.SIAM.strategy}</p>
+              {state.siamDecisions.britainOfferResponse && (
+                <p>Phản hồi Anh: <strong>{state.siamDecisions.britainOfferResponse.action} ({state.siamDecisions.britainOfferResponse.finalPercent}%)</strong></p>
+              )}
+              {state.siamDecisions.franceOfferResponse && (
+                <p>Phản hồi Pháp: <strong>{state.siamDecisions.franceOfferResponse.action} ({state.siamDecisions.franceOfferResponse.finalPercent}%)</strong></p>
+              )}
+            </div>
+          )}
+          {state.activeQuestions.SIAM && (
+            <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs border">
+              <p className="font-semibold text-slate-700 mb-1">Câu hỏi: {state.activeQuestions.SIAM.question.question}</p>
+              <p className="text-emerald-700 font-bold">Đáp án đúng: {state.activeQuestions.SIAM.question.correctAnswer}</p>
+              <p>Xiêm chọn: <strong>{state.activeQuestions.SIAM.answered || 'Chưa trả lời'}</strong></p>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => socket.emit('SET_ANSWER_STATUS', { team: 'SIAM', isCorrect: true })}
+                  className={`px-2 py-1 rounded text-xs font-bold ${state.activeQuestions.SIAM.correct === true ? 'bg-emerald-600 text-white' : 'bg-slate-200'}`}
+                >
+                  Đúng
+                </button>
+                <button
+                  onClick={() => socket.emit('SET_ANSWER_STATUS', { team: 'SIAM', isCorrect: false })}
+                  className={`px-2 py-1 rounded text-xs font-bold ${state.activeQuestions.SIAM.correct === false ? 'bg-red-600 text-white' : 'bg-slate-200'}`}
+                >
+                  Sai
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Đối Đầu Anh - Pháp (Nếu cả 2 cùng tấn công) */}
+      {state.phase === 'DUEL_PHASE' && state.activeQuestions.DUEL && (
+        <div className="bg-amber-50 border-2 border-amber-300 p-5 rounded-2xl">
+          <h3 className="font-black text-amber-900 text-lg mb-2">ĐỐI ĐẦU ANH – PHÁP (NHÓM D)</h3>
+          <p className="text-sm font-semibold mb-2">{state.activeQuestions.DUEL.question.question}</p>
+          <p className="text-xs text-emerald-800 font-bold mb-4">Đáp án: {state.activeQuestions.DUEL.question.correctAnswer}</p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => socket.emit('SET_DUEL_WINNER', { winner: 'BRITAIN' })}
+              className={`px-4 py-2 rounded-xl text-xs font-bold text-white ${state.activeQuestions.DUEL.winner === 'BRITAIN' ? 'bg-[#315C9B] ring-2 ring-blue-400' : 'bg-slate-500'}`}
+            >
+              Anh trả lời đúng trước (+30)
+            </button>
+            <button
+              onClick={() => socket.emit('SET_DUEL_WINNER', { winner: 'FRANCE' })}
+              className={`px-4 py-2 rounded-xl text-xs font-bold text-white ${state.activeQuestions.DUEL.winner === 'FRANCE' ? 'bg-[#9B3D4D] ring-2 ring-red-400' : 'bg-slate-500'}`}
+            >
+              Pháp trả lời đúng trước (+30)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Xem Trước Bảng Điểm & Xác Nhận */}
+      {state.phase === 'PREVIEW_SCORE' && (
+        <div className="bg-white p-6 rounded-2xl border-2 border-amber-400 shadow-lg space-y-4">
+          <h3 className="text-lg font-black text-slate-800">BẢN XEM TRƯỚC TÍNH ĐIỂM CHIẾN THUẬT</h3>
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b font-bold text-slate-600">
+                <th className="py-2">Đội</th>
+                <th className="py-2">Điểm hiện tại</th>
+                <th className="py-2">Biến động</th>
+                <th className="py-2">Điểm dự kiến</th>
+                <th className="py-2">Lý do</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.proposedScoreChanges.map((item, idx) => (
+                <tr key={idx} className="border-b">
+                  <td className="py-2 font-bold">{item.team}</td>
+                  <td className="py-2">{state.scores[item.team]}</td>
+                  <td className={`py-2 font-bold ${item.change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {item.change >= 0 ? `+${item.change}` : item.change}
+                  </td>
+                  <td className="py-2 font-bold">{state.scores[item.team] + item.change}</td>
+                  <td className="py-2 text-xs text-slate-500">{item.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <button
+            onClick={confirmScore}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-base shadow"
+          >
+            Xác Nhận Cập Nhật Điểm (Áp dụng đúng 1 lần)
+          </button>
+        </div>
+      )}
+
+      {/* Kết Quả Chung Cuộc */}
+      {state.phase === 'GAME_OVER' && state.winner && (
+        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-6 rounded-2xl text-center space-y-3">
+          <Award className="mx-auto" size={48} />
+          <h2 className="text-2xl font-black">TRÒ CHƠI KẾT THÚC</h2>
+          <p className="text-lg">
+            Đội chiến thắng là <strong>{state.winner.team}</strong> với mức tăng trưởng chiến lược{' '}
+            <strong>{state.winner.changePercent}%</strong>!
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

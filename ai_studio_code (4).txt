@@ -1,0 +1,108 @@
+import React from 'react';
+import { RoomState } from '../../shared/types';
+import { Crown, Anchor, Shield } from 'lucide-react';
+
+export default function ProjectorView({ state }: { state: RoomState }) {
+  return (
+    <div className="space-y-6">
+      {/* Bảng Điểm 3 Cường Quốc */}
+      <div className="grid grid-cols-3 gap-6">
+        {/* ANH */}
+        <div className="bg-white rounded-3xl p-6 border-b-8 border-[#315C9B] shadow-md text-center">
+          <Crown className="mx-auto text-[#315C9B] mb-2" size={40} />
+          <h2 className="text-xl font-black text-[#315C9B]">ĐỘI ANH</h2>
+          <div className="text-6xl font-black text-slate-800 my-4">{state.scores.BRITAIN}</div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Khởi đầu: 100 đ
+          </div>
+        </div>
+
+        {/* PHÁP */}
+        <div className="bg-white rounded-3xl p-6 border-b-8 border-[#9B3D4D] shadow-md text-center">
+          <Anchor className="mx-auto text-[#9B3D4D] mb-2" size={40} />
+          <h2 className="text-xl font-black text-[#9B3D4D]">ĐỘI PHÁP</h2>
+          <div className="text-6xl font-black text-slate-800 my-4">{state.scores.FRANCE}</div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Khởi đầu: 100 đ
+          </div>
+        </div>
+
+        {/* XIÊM */}
+        <div className="bg-white rounded-3xl p-6 border-b-8 border-[#27856A] shadow-md text-center">
+          <Shield className="mx-auto text-[#27856A] mb-2" size={40} />
+          <h2 className="text-xl font-black text-[#27856A]">ĐỘI XIÊM</h2>
+          <div className="text-6xl font-black text-slate-800 my-4">{state.scores.SIAM}</div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            Khởi đầu: 200 đ
+          </div>
+        </div>
+      </div>
+
+      {/* Thanh Tiến Trình & Trạng Thái Nước Đi */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-extrabold text-slate-800 text-lg">TIẾN TRÌNH LƯỢT {state.round}/3</h3>
+          <span className="text-sm font-black bg-slate-100 text-slate-700 px-4 py-1.5 rounded-full">
+            GIAI ĐOẠN: {state.phase}
+          </span>
+        </div>
+
+        {/* Công Bố Nước Đi Khi Quản Trò Mở */}
+        {state.movesRevealed ? (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-200">
+              <span className="text-xs font-bold text-[#315C9B]">NƯỚC ĐI CỦA ANH</span>
+              <p className="text-lg font-black mt-1">
+                {state.moves.BRITAIN?.action === 'NEGOTIATE'
+                  ? `ĐÀM PHÁN (${state.moves.BRITAIN.negotiateDemand}%)`
+                  : 'TẤN CÔNG QUÂN SỰ'}
+              </p>
+            </div>
+
+            <div className="bg-red-50 p-4 rounded-xl text-center border border-red-200">
+              <span className="text-xs font-bold text-[#9B3D4D]">NƯỚC ĐI CỦA PHÁP</span>
+              <p className="text-lg font-black mt-1">
+                {state.moves.FRANCE?.action === 'NEGOTIATE'
+                  ? `ĐÀM PHÁN (${state.moves.FRANCE.negotiateDemand}%)`
+                  : 'TẤN CÔNG QUÂN SỰ'}
+              </p>
+            </div>
+
+            <div className="bg-emerald-50 p-4 rounded-xl text-center border border-emerald-200">
+              <span className="text-xs font-bold text-[#27856A]">CHIẾN LƯỢC CỦA XIÊM</span>
+              <p className="text-lg font-black mt-1">
+                {state.moves.SIAM?.strategy || 'ĐANG PHÒNG THỦ'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-6 text-slate-400 font-medium">
+            🔒 Các đội đang cân nhắc nước đi bí mật...
+          </div>
+        )}
+      </div>
+
+      {/* Nhật Ký Biến Động Điểm */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h4 className="font-bold text-slate-700 text-sm mb-3">NHẬT KÝ CHIẾN LƯỢC</h4>
+        {state.history.length === 0 ? (
+          <p className="text-xs text-slate-400 italic">Chưa có sự kiện tính điểm nào được ghi nhận.</p>
+        ) : (
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {state.history.slice().reverse().map(h => (
+              <div key={h.id} className="text-xs flex justify-between items-center py-1.5 border-b border-slate-100">
+                <span>
+                  <strong className="text-slate-800">[Lượt {h.round}]</strong>{' '}
+                  <span className="font-bold text-[#27856A]">{h.team}</span>: {h.reason}
+                </span>
+                <span className={`font-black ${h.change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {h.change >= 0 ? `+${h.change}` : h.change} đ
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
